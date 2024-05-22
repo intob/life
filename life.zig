@@ -4,58 +4,53 @@ pub fn main() !void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
     const allocator = arena.allocator();
-
-    const rows: usize = 160;
-    const cols: usize = 160;
-
+    const rows: usize = 170;
+    const cols: usize = 560;
     var matrix1 = try allocator.alloc(u4, rows * cols);
     var matrix2 = try allocator.alloc(u4, rows * cols);
-    defer {
-        allocator.free(matrix1);
-        allocator.free(matrix2);
-    }
-
+    defer allocator.free(matrix1);
+    defer allocator.free(matrix2);
     var current = &matrix1;
     var next = &matrix2;
-
     var prng = std.rand.DefaultPrng.init(blk: {
         var seed: u64 = undefined;
         try std.posix.getrandom(std.mem.asBytes(&seed));
         break :blk seed;
     });
     const rand = prng.random();
-
     for (current.*) |*cell| {
         cell.* = if (rand.boolean()) 1 else 0;
     }
-
-    var rowstr = try allocator.alloc(u8, cols);
-    defer allocator.free(rowstr);
-
+    var buf = try allocator.alloc(u8, rows * cols + rows);
+    defer allocator.free(buf);
     var g: u32 = 0;
-    while (g < 100000) : (g += 1) {
-        try print(&rowstr, current, rows, cols);
+    while (g < 10000) : (g += 1) {
+        try print(current, rows, cols, &buf);
         gen(rows, cols, current, next);
         std.mem.swap(@TypeOf(current), &current, &next);
     }
 }
 
-fn print(rowstr: *[]u8, m: *const []u4, rows: usize, cols: usize) !void {
-    try std.io.getStdOut().writeAll("\x1B[2J"); // clear screen
-    try std.io.getStdOut().writeAll("\x1B[H"); // move cursor to top left corner
+fn print(m: *const []u4, rows: usize, cols: usize, buf: *[]u8) !void {
+    _ = try std.io.getStdOut().write("\x1B[2J"); // clear screen
+    _ = try std.io.getStdOut().write("\x1B[H"); // move cursor to top left corner
     var row: usize = 0;
     var col: usize = 0;
+    var print_pos: usize = 0;
     while (row < rows) : (row += 1) {
+        col = 0;
         while (col < cols) : (col += 1) {
             if (m.*[row * cols + col] == 1) {
-                rowstr.*[col] = 0x23;
+                buf.*[print_pos] = 0x23;
             } else {
-                rowstr.*[col] = 0x20;
+                buf.*[print_pos] = 0x20;
             }
+            print_pos += 1;
         }
-        std.debug.print("{s}\n", .{rowstr.*});
-        col = 0;
+        buf.*[print_pos] = 0x0A;
+        print_pos += 1;
     }
+    _ = try std.io.getStdOut().write(buf.*);
 }
 
 fn gen(rows: usize, cols: usize, current: *[]u4, next: *[]u4) void {
