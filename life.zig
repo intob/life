@@ -4,8 +4,8 @@ pub fn main() !void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
     const allocator = arena.allocator();
-    const rows: usize = 170;
-    const cols: usize = 560;
+    const rows: usize = 120;
+    const cols: usize = 180;
     var matrix1 = try allocator.alloc(u4, rows * cols);
     var matrix2 = try allocator.alloc(u4, rows * cols);
     defer allocator.free(matrix1);
